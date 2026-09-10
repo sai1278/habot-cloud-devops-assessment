@@ -4,7 +4,7 @@
 **Target Position**: Junior Cloud & DevOps Engineer (GCP / Django / React)  
 **Company**: Habot Connect FZCO  
 **Evaluation Philosophy**: Correctness $\longrightarrow$ Security $\longrightarrow$ Determinism $\longrightarrow$ Reproducibility $\longrightarrow$ Clarity $\longrightarrow$ Evidence  
-**Status Statement**: Production-oriented reference implementation with locally validated controls; live GCP/GitHub enforcement requires environment-specific verification.
+**Status Statement**: Submission-ready subject to final human review.
 
 ---
 
@@ -26,17 +26,31 @@
    - 25 unit tests (`test_serializer.py`, `test_validation.py`) covering all 12+ required failure and success scenarios, plus anti-coercion checks.
 4. **Poka-Yoke Fail-Closed CI/CD (GitHub Actions)**:
    - Three pinned workflows (`pull-request.yml`, `security.yml`, `terraform.yml`) with least-privilege `permissions: contents: read`.
-   - 10 automated validation gates with zero `continue-on-error` tolerance.
+   - Automated validation gates with zero `continue-on-error` tolerance.
    - Keyless Google Cloud Workload Identity Federation (WIF) architecture.
-5. **Local Reproducibility & Demonstrations**:
-   - Authoritative unified validation runner scripts: `scripts/validate_all.ps1` and `scripts/validate_all.sh`.
+5. **Technical Deliverables & Submission Artifacts**:
+   - **Executive Architecture Presentation (PowerPoint)**: [`presentation/Habot_Connect_Cloud_DevOps_Assessment.pptx`](file:///c:/Users/kanchiDhyana%20sai/OneDrive/Desktop/Habot/presentation/Habot_Connect_Cloud_DevOps_Assessment.pptx) — Exactly 15 slides in 16:9 widescreen layout with verified enterprise styling.
+   - **DCYN Business Logic Spreadsheet (Excel)**: [`schemas/dcyn/DCYN_Mapping.xlsx`](file:///c:/Users/kanchiDhyana%20sai/OneDrive/Desktop/Habot/schemas/dcyn/DCYN_Mapping.xlsx) — Fully formatted workbook (10 rows, 10 columns, frozen pane A2, auto-filters, text wrap, 100% data parity with CSV, zero placeholders).
+   - **Presentation Plan & Presenter Notes**: [`presentation/README.md`](file:///c:/Users/kanchiDhyana%20sai/OneDrive/Desktop/Habot/presentation/README.md) detailing talking points for all 15 slides.
+   - **Reproducible Presentation Generator**: [`scripts/build_presentation.py`](file:///c:/Users/kanchiDhyana%20sai/OneDrive/Desktop/Habot/scripts/build_presentation.py) enabling full, deterministic deck re-generation.
+6. **Local Reproducibility & Demonstrations**:
+   - Authoritative unified validation runner scripts: `scripts/validate_all.ps1` and `scripts/validate_all.sh` (all 7 local validation gates pass).
    - Safe mock secret test fixture (`tests/fixtures/malicious_secret.py`) demonstrating fail-closed secret scanner blocking.
    - Unformatted HCL fixture (`tests/fixtures/unformatted_sample.tf`) demonstrating Terraform format check fail-closed blocking.
    - Real, un-fabricated execution logs stored in `docs/evidence/`.
 
 ---
 
-## 2. Requirement Verification & Test Summary
+## 2. Requirement Verification & Test Summary (7 Local Validation Gates Passed)
+
+All 7 local validation gates passed successfully:
+1. **Terraform Format Check**: PASS
+2. **Terraform Syntax & Type Validation**: PASS
+3. **Poka-Yoke Secret Scanner Negative Test**: PASS (Fail-Closed triggered on fixture)
+4. **Poka-Yoke Secret Scanner Clean Repository Gate**: PASS (Zero secrets detected)
+5. **Ruff Python Linting**: PASS (Zero lint or format errors)
+6. **Canonical JSON Schema Contract Validation**: PASS (100% conforming)
+7. **DRF & DCYN Pytest Unit Test Suite**: PASS (25 passed in 0.23s)
 
 | Gate | Execution Command | Result | Verification Status | Evidence File |
 |---|---|---|---|---|
@@ -55,13 +69,14 @@
 
 ---
 
-## 3. Items Requiring External GCP & GitHub Configuration
+## 3. Explicit Engineering Limitations (Non-Fabrication Policy)
 
-Per the Non-Fabrication Rule, the following items are honestly documented as requiring live cloud/platform settings:
-1. **Live Cloud Infrastructure Provisioning**: Requires an active GCP billing account and project ID supplied to `terraform/environments/staging.tfvars`.
-2. **GitHub Actions Keyless WIF**: Remote CI planning requires repository secrets `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_SERVICE_ACCOUNT_EMAIL`.
-3. **BigQuery RLS Execution**: Applied via `bq query` post-table-creation.
-4. **Merge Protection**: Branch protection rules on `main` must be toggled in repository settings to enforce that CI status checks block merges.
+Per the Non-Fabrication Rule, the following limitations are explicitly stated:
+1. **Live GCP provisioning was not performed**: All infrastructure has been strictly validated via `terraform fmt`, `terraform validate`, and static analysis; live provisioning requires an active GCP billing account and project credentials.
+2. **BigQuery RLS live enforcement was not verified**: Row access policy DDL is authored and lifecycle-documented, but live enforcement requires an active BigQuery table in Google Cloud.
+3. **Workload Identity Federation runtime verification was not performed**: GitHub Actions WIF workflows are configured for keyless OIDC, but live token exchange requires deployment to a live GCP project with repository secrets configured.
+4. **GitHub main branch protection is not claimed unless actually verified**: Pinned workflows and PR validation gates are established in code, but enforcement of branch protection rules on `main` requires administrative configuration in the GitHub repository settings.
+5. **Pub/Sub DLQ Operational Triage**: The DLQ preserves rejected messages for 14 days (`1,209,600s`). Bounded retry prevents silent schema field dropping, but preventing data loss beyond 14 days requires active operational monitoring and replay.
 
 ---
 

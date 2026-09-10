@@ -1,0 +1,80 @@
+name: "Terraform Staging Pipeline"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "terraform/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "terraform/**"
+
+permissions:
+  contents: read
+  id-token: write # Required for keyless Workload Identity Federation (WIF)
+
+concurrency:
+  group: terraform-staging-lock
+  cancel-in-progress: false # Do not interrupt active cloud state locks
+
+jobs:
+  terraform-plan:
+    name: "Terraform Format, Validate & Plan"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "Setup Terraform"
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
+
+      - name: "Check Formatting"
+        run: terraform -chdir=terraform fmt -check -recursive
+
+      - name: "Initialize Terraform (Local / Remote Backend)"
+        run: terraform -chdir=terraform init -backend=false
+
+      - name: "Validate Configuration"
+        run: terraform -chdir=terraform validate
+
+      # KEYLESS GCP AUTHENTICATION (Workload Identity Federation)
+      # Does not use service account JSON keys.
+      # Requires USER-SUPPLIED GCP PROJECT / CREDENTIALS in GitHub Secrets:
+      # - GCP_WORKLOAD_IDENTITY_PROVIDER
+      # - GCP_SERVICE_ACCOUNT_EMAIL
+      - name: "Authenticate to Google Cloud via WIF"
+        if: "${{ env.GCP_WIF_CONFIGURED == 'true' }}"
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}"
+          service_account: "${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}"
+        env:
+          GCP_WIF_CONFIGURED: "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER != '' }}"
+
+      - name: "Terraform Plan (Dry Run)"
+        if: "${{ env.GCP_WIF_CONFIGURED == 'true' }}"
+        run: |
+          terraform -chdir=terraform plan \
+            -var-file=environments/staging.tfvars.example \
+            -no-color
+        env:
+          GCP_WIF_CONFIGURED: "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER != '' }}"
+
+      - name: "Document Cloud Authentication Requirement"
+        if: "${{ env.GCP_WIF_CONFIGURED != 'true' }}"
+        run: |
+          echo "================================================================================"
+          echo "[NOTICE] Live GCP Cloud Plan skipped: REQUIRES USER-SUPPLIED GCP CREDENTIALS"
+          echo "To enable live staging planning and deployment:"
+          echo "  1. Provision a Workload Identity Pool in GCP."
+          echo "  2. Populate repository secrets 'GCP_WORKLOAD_IDENTITY_PROVIDER' and 'GCP_SERVICE_ACCOUNT_EMAIL'."
+          echo "  3. Re-run workflow."
+          echo "Static validation, syntax checks, and provider schemas PASSED."
+          echo "================================================================================"
+        env:
+          GCP_WIF_CONFIGURED: "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER != '' }}"

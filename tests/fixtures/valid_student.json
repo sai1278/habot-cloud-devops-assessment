@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0.0",
+  "student_name": "Fatima Zahra",
+  "parent_name": "Rashid Zahra",
+  "email": "fatima.zahra@example.com",
+  "consent": true,
+  "support_required": true,
+  "region": "MENA",
+  "learning_support_type": "ACADEMIC",
+  "created_at": "2026-09-10T08:30:00Z"
+}

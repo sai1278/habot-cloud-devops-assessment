@@ -1,0 +1,79 @@
+name: "Pull Request Gates"
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "schemas/**"
+      - "terraform/**"
+      - "scripts/**"
+      - ".github/workflows/**"
+
+# Least privilege: PR workflows only read repository contents
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-validation:
+    name: "Python Linting, Tests & Schema Contract"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "Set up Python 3.12"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: "Install Dependencies"
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r app/requirements.txt
+
+      - name: "Gate 1: Ruff Python Linting"
+        run: ruff check .
+
+      - name: "Gate 2: Canonical JSON Schema Contract Validation"
+        run: python scripts/validate_schema.py
+
+      - name: "Gate 3: Pytest Suite (DRF & DCYN Logic)"
+        run: pytest -v --tb=short
+
+  terraform-static-validation:
+    name: "Terraform Formatting, Init & Validation"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "Set up Terraform"
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
+
+      - name: "Gate 4: Terraform Format Check"
+        run: terraform -chdir=terraform fmt -check -recursive
+
+      - name: "Gate 5: Terraform Init (Backend Disabled)"
+        run: terraform -chdir=terraform init -backend=false
+
+      - name: "Gate 6: Terraform Validate"
+        run: terraform -chdir=terraform validate
+
+      - name: "Setup TFLint"
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: "v0.52.0"
+
+      - name: "Gate 7: TFLint Inspection"
+        run: |
+          tflint --init
+          tflint --chdir=terraform

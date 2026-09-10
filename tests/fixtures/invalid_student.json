@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0.0",
+  "student_name": "Tariq Test",
+  "email": "invalid-email-format",
+  "consent": false,
+  "support_required": false,
+  "region": "INVALID_REGION",
+  "learning_support_type": "INVALID_SUPPORT",
+  "created_at": "not-a-valid-timestamp",
+  "unexpected_injected_field": "violates_additional_properties_false"
+}

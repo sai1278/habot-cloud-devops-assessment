@@ -23,11 +23,28 @@ Row Access Policies (Dynamic filtering predicate applied per query execution)
 ```
 
 > [!IMPORTANT]
-> **Deployment Separation (Post-Table-Creation Control)**:
-> HashiCorp's Google Cloud Terraform provider does not manage BigQuery Row Access Policies natively. Attempting to execute DDL inside Terraform before the table exists introduces circular dependency errors.
-> **Operational Invariant**:
-> 1. Terraform provisions datasets, tables, and IAM roles.
-> 2. Row Access Policies are applied via BigQuery DDL (`bq query`) as a post-table-creation step.
+> **Operational Lifecycle & Table Recreation Warning**:
+> In Google Cloud BigQuery, Row Access Policies are managed at the physical table level via DDL SQL (`terraform/policies/row_access_policy.sql`). The current HashiCorp Google Cloud Terraform provider does not manage Row Access Policies as native Terraform resources.
+>
+> ```text
+> IMPORTANT:
+> Recreating the BigQuery table can remove existing row access policies.
+> After table recreation, the RLS DDL must be re-applied and verified before
+> regional users are granted access to the table.
+> ```
+>
+> **Lifecycle Execution Order**:
+> ```text
+> Terraform configuration
+>         ↓
+> BigQuery table creation
+>         ↓
+> RLS SQL application (bq query < terraform/policies/row_access_policy.sql)
+>         ↓
+> RLS verification (INFORMATION_SCHEMA.ROW_ACCESS_POLICIES & bq show)
+> ```
+>
+> Row-Level Security is **defined** in declarative SQL and **configured** for the architecture, but requires post-provisioning application and verification in a live environment. It is NOT automatically maintained by Terraform across table drop/recreate operations.
 
 ---
 
@@ -63,7 +80,16 @@ bq query \
 
 ## 4. Verification Queries
 
-### Step 1: Verify Active Row Access Policies
+### Step 1: Verify Active Row Access Policies (bq CLI & SQL)
+```bash
+# Verify active policies via bq CLI
+bq query \
+  --project_id="${PROJECT_ID}" \
+  --use_legacy_sql=false \
+  'SELECT policy_name, table_name, filter_expression, grantee_list FROM `habot_d1_staged_enforced.INFORMATION_SCHEMA.ROW_ACCESS_POLICIES` WHERE table_name = "student_onboarding";'
+```
+
+Alternatively in BigQuery Console SQL:
 ```sql
 SELECT
   policy_name,

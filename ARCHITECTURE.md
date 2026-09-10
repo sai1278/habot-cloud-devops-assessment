@@ -12,6 +12,9 @@ This document documents the technical rationale for architectural decisions impl
 
 ## 2. Why Strict Least Privilege & Dedicated Service Accounts?
 - **Engineering Rationale**: Defaulting to `roles/editor` or `roles/owner` gives any compromised identity the power to delete datasets, read cross-tenant buckets, or manipulate IAM bindings.
+- **Application Workloads vs. Terraform Deployment**:
+  - **Application Service Accounts**: Enforce **resource-scoped least privilege**. Identities (`sa-d0-ingest`, `sa-d0-process`, `sa-django-pub`, `sa-pubsub-sink`, `sa-analytics`) are bound only to specific buckets, topics, or datasets with restrictive roles and conditions.
+  - **Terraform Deployment Service Account (`sa-ci-apply`)**: Uses **service-scoped administrative roles** (`storage.admin`, `bigquery.admin`, `pubsub.admin`, `iam.serviceAccountAdmin`) at project scope because Terraform must provision and manage infrastructure. While intentionally narrower than `roles/owner` or `roles/editor`, this is service-scoped administrative delegation rather than resource-level least privilege. `sa-ci-apply` must therefore be dedicated exclusively to automated deployment and never reused for runtime workloads.
 - **Mitigated Habot Failure**: If the Django API application identity (`sa-django-publisher`) is compromised via an application-level vulnerability, the attacker cannot read files from the D0 Raw Landing bucket or execute queries against BigQuery. They are strictly restricted to publishing messages to a single Pub/Sub topic.
 
 ---

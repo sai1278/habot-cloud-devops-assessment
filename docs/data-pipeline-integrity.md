@@ -62,10 +62,17 @@ Producer (Django API)
 
 ## 3. Data Integrity & Poka-Yoke Controls
 
-### 3.1 Strict Unknown Field Handling (`drop_unknown_fields = false`)
+### 3.1 Strict Unknown Field Handling & Data Loss Reality Check
 - In BigQuery direct subscriptions, the default setting often drops undeclared fields silently.
 - **Poka-Yoke Invariant**: In [`terraform/pubsub.tf`](file:///c:/Users/kanchiDhyana%20sai/OneDrive/Desktop/Habot/terraform/pubsub.tf), `drop_unknown_fields = false` is explicitly set. If a message contains fields outside the table schema, BigQuery rejects row insertion.
-- The subscription retries insertion according to exponential backoff until `max_delivery_attempts = 5`, after which the message is forwarded to the DLQ topic.
+- **Data Loss Reality Check**: Setting `drop_unknown_fields = false` prevents unknown fields from being silently discarded into BigQuery, but does **not** by itself guarantee zero data loss.
+- **Retention & Dead-Letter Parameters**:
+  - **Primary Topic Retention**: 7 days (`604,800s`) on `student-onboarding-events`.
+  - **Dead-Letter Queue (DLQ) Retention**: 14 days (`1,209,600s`) on `student-onboarding-dlq`.
+  - **Maximum Delivery Attempts**: 5 attempts before message forwarding to DLQ.
+  - **DLQ Expiry Risk**: If an operator does not triage and drain rejected messages within the 14-day retention window, messages expire and data is permanently lost.
+- **Engineering Guarantee**:
+  > The design prevents silent schema-field dropping and provides bounded retry/DLQ recovery. Data-loss prevention beyond the DLQ retention window requires operational monitoring and reprocessing.
 
 ### 3.2 Metadata Ingestion (`write_metadata = true`)
 - Pub/Sub message metadata (message ID, publish time, subscription name, attributes) are captured alongside the record payload in BigQuery pseudo-columns, ensuring auditability and idempotent deduplication.
@@ -77,28 +84,41 @@ Producer (Django API)
 
 ---
 
-## 4. Operational Failure Paths
+## 4. Operational Failure Paths & End-to-End Flow
+
+### Complete Message Lifecycle Flow
+```text
+Producer (Django API)
+   ↓
+Pub/Sub Topic (student-onboarding-events, 7-day retention)
+   ↓
+BigQuery Subscription (drop_unknown_fields = false)
+   ↓
+Successful message → BigQuery Table (student_onboarding)
+   ↓
+Failed message → retry (up to 5 attempts with backoff)
+   ↓
+Retry exhaustion → DLQ Topic (student-onboarding-dlq, 14-day retention)
+   ↓
+Operator / automated DLQ processor (student-onboarding-dlq-sub)
+   ↓
+Reprocess or investigate (must occur within 14 days to prevent expiry loss)
+```
 
 ### Flow A: Valid Message (Standard Path)
 ```text
 Valid Message --> Pub/Sub Topic --> Direct BQ Subscription --> BigQuery Table Insert --> ACK (Commit)
 ```
 
-### Flow B: Malformed Payload / Unparseable JSON
+### Flow B: Malformed Payload / Schema Mismatch (DLQ Path)
 ```text
-Corrupted JSON --> Pub/Sub Topic --> Direct BQ Subscription (Parse Error) 
-              --> Retry Attempt 1..5 
-              --> DLQ Forwarding (student-onboarding-dlq) 
-              --> Operator Alert Triggered
-```
-
-### Flow C: Schema Mismatch (E.g. Table Schema Altered Ahead of Producers)
-```text
-Out-of-Spec Payload --> Direct BQ Subscription (Schema Mismatch Error)
-                    --> Backlog growth on student-onboarding-bq-sub
-                    --> Retries exhausted (5 attempts)
-                    --> Preserved in student-onboarding-dlq for 14 days
-                    --> Operator rectifies schema, then runs replay script
+Out-of-Spec Payload --> Pub/Sub Topic --> Direct BQ Subscription (Schema Rejection)
+                    --> Exponential Backoff Retries (Attempts 1 to 5)
+                    --> Retries Exhausted
+                    --> Forwarded to Dead-Letter Queue (student-onboarding-dlq)
+                    --> Retained for 14 days (1,209,600s)
+                    --> Operational Alert Triggered
+                    --> Operator rectifies root cause & replays message before 14-day expiry
 ```
 
 ---

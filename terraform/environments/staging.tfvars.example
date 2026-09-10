@@ -1,0 +1,28 @@
+# ==============================================================================
+# Habot Connect — Staging Environment Variables Example
+#
+# INSTRUCTIONS:
+# Copy this file to staging.tfvars:
+#   cp environments/staging.tfvars.example environments/staging.tfvars
+#
+# Replace the placeholder below with your real Google Cloud Project ID.
+# DO NOT commit real staging.tfvars with sensitive identifiers to public repos.
+# ==============================================================================
+
+# REQUIRES USER-SUPPLIED GCP PROJECT / CREDENTIALS
+project_id = "habot-staging-project-example"
+
+# Deployment region for staging data residency
+region = "europe-west1"
+
+# Environment lifecycle tag
+environment = "staging"
+
+# Standard GCS tier for landing zone
+storage_class = "STANDARD"
+
+# Days before transitioning live objects to Nearline
+raw_retention_days = 30
+
+# In staging, allow clean teardown; in production, keep true
+deletion_protection = false

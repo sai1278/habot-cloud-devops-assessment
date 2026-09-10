@@ -1,0 +1,11 @@
+[INFO] Successfully validated schema definition: student_onboarding.schema.json
+[PASS] student_onboarding.example.json fully conforms to canonical contract.
+[PASS] valid_student.json fully conforms to canonical contract.
+[PASS] Expected rejection confirmed for invalid_student.json:
+  - Correctly caught: 'root': 'parent_name' is a required property
+  - Correctly caught: 'root': Additional properties are not allowed ('unexpected_injected_field' was unexpected)
+  - Correctly caught: 'consent': True was expected
+  - Correctly caught: 'learning_support_type': 'INVALID_SUPPORT' is not one of ['NONE', 'ACADEMIC', 'TECHNICAL', 'COUNSELING', 'SPECIAL_NEEDS']
+  - Correctly caught: 'region': 'INVALID_REGION' is not one of ['NA', 'EMEA', 'APAC', 'LATAM', 'MENA']
+
+[RESULT] All schema contract checks PASSED successfully.

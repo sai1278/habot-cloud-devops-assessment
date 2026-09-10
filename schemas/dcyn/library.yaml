@@ -1,0 +1,95 @@
+version: "1.0.0"
+description: "Deterministic Consent & Yes/No (DCYN) Policy Engine Rules for Habot Connect"
+policy_name: "DCYN_STUDENT_ONBOARDING_GATE"
+default_decision: "REJECT"
+
+rules:
+  - id: "DCYN-001"
+    name: "parental_consent_mandatory"
+    field: "consent"
+    evaluation_type: "BINARY_BOOLEAN"
+    question: "Did the parent or legal guardian explicitly grant consent (consent == true)?"
+    decisions:
+      YES:
+        action: "PROCEED"
+        code: "DCYN_CONSENT_GRANTED"
+        description: "Parental consent verified. Proceed to next gate."
+      NO:
+        action: "REJECT"
+        code: "ERR_DCYN_CONSENT_REFUSED"
+        http_status: 400
+        description: "Parental consent was not granted (false or omitted). Ingestion rejected immediately."
+
+  - id: "DCYN-002"
+    name: "support_coherence_check"
+    fields:
+      - "support_required"
+      - "learning_support_type"
+    evaluation_type: "BINARY_CONDITIONAL"
+    question: "Is learning_support_type coherent with support_required flag?"
+    decisions:
+      YES:
+        action: "PROCEED"
+        code: "DCYN_SUPPORT_COHERENT"
+        condition: "(support_required == false AND learning_support_type == 'NONE') OR (support_required == true AND learning_support_type IN ['ACADEMIC', 'TECHNICAL', 'COUNSELING', 'SPECIAL_NEEDS'])"
+        description: "Support configuration is logical and fully coherent."
+      NO:
+        action: "REJECT"
+        code: "ERR_DCYN_SUPPORT_INCOHERENT"
+        http_status: 400
+        description: "Contradictory support configuration: support_required is false but type is specified, or support_required is true but type is NONE."
+
+  - id: "DCYN-003"
+    name: "operational_region_supported"
+    field: "region"
+    evaluation_type: "BINARY_SET_MEMBERSHIP"
+    question: "Is the student onboarding from an active operational region?"
+    allowed_values:
+      - "NA"
+      - "EMEA"
+      - "APAC"
+      - "LATAM"
+      - "MENA"
+    decisions:
+      YES:
+        action: "PROCEED"
+        code: "DCYN_REGION_SUPPORTED"
+        description: "Operational region is recognized and supported."
+      NO:
+        action: "REJECT"
+        code: "ERR_DCYN_UNSUPPORTED_REGION"
+        http_status: 400
+        description: "Operational region is outside supported service domains."
+
+  - id: "DCYN-004"
+    name: "email_deliverability_syntax"
+    field: "email"
+    evaluation_type: "BINARY_PATTERN_MATCH"
+    question: "Does the email satisfy RFC 5322 compliant syntax and length requirements?"
+    decisions:
+      YES:
+        action: "PROCEED"
+        code: "DCYN_EMAIL_VALID"
+        description: "Email structure is valid for communication delivery."
+      NO:
+        action: "REJECT"
+        code: "ERR_DCYN_INVALID_EMAIL"
+        http_status: 400
+        description: "Email address format fails validation standards."
+
+  - id: "DCYN-005"
+    name: "canonical_schema_version_match"
+    field: "schema_version"
+    evaluation_type: "BINARY_EQUALITY"
+    question: "Does the schema_version exactly match active contract '1.0.0'?"
+    expected_value: "1.0.0"
+    decisions:
+      YES:
+        action: "PROCEED"
+        code: "DCYN_SCHEMA_VERSION_ACCEPTED"
+        description: "Schema version is certified."
+      NO:
+        action: "REJECT"
+        code: "ERR_DCYN_VERSION_MISMATCH"
+        http_status: 400
+        description: "Payload contract version differs from active schema version."

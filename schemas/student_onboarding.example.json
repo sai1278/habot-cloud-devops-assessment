@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0.0",
+  "student_name": "Amina Al-Mansoor",
+  "parent_name": "Tariq Al-Mansoor",
+  "email": "amina.almansoor@example.com",
+  "consent": true,
+  "support_required": true,
+  "region": "MENA",
+  "learning_support_type": "TECHNICAL",
+  "created_at": "2026-09-10T12:00:00Z"
+}

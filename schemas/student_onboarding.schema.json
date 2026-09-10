@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://habot.io/schemas/student_onboarding.v1.json",
+  "title": "StudentOnboardingEvent",
+  "description": "Canonical data contract for Habot Connect student onboarding pipeline.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "student_name",
+    "parent_name",
+    "email",
+    "consent",
+    "support_required",
+    "region",
+    "learning_support_type",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["1.0.0"],
+      "description": "Semantic version of the data contract."
+    },
+    "student_name": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 100,
+      "pattern": "^[A-Za-z]+([ A-Za-z\\-']+[A-Za-z]+)*$",
+      "description": "Full legal name of the student."
+    },
+    "parent_name": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 100,
+      "pattern": "^[A-Za-z]+([ A-Za-z\\-']+[A-Za-z]+)*$",
+      "description": "Full legal name of the parent or legal guardian."
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "minLength": 5,
+      "maxLength": 254,
+      "description": "Verified communication email address for the student or guardian."
+    },
+    "consent": {
+      "type": "boolean",
+      "const": true,
+      "description": "Mandatory parental/guardian consent flag. Must strictly be true."
+    },
+    "support_required": {
+      "type": "boolean",
+      "description": "Flag indicating whether specialized learning or technical support is requested."
+    },
+    "region": {
+      "type": "string",
+      "enum": ["NA", "EMEA", "APAC", "LATAM", "MENA"],
+      "description": "Geographical operational region code."
+    },
+    "learning_support_type": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "ACADEMIC",
+        "TECHNICAL",
+        "COUNSELING",
+        "SPECIAL_NEEDS"
+      ],
+      "description": "Category of learning support requested. If support_required is false, this must be NONE."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp recording when the record was validated and submitted."
+    }
+  }
+}

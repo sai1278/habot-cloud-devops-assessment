@@ -32,7 +32,16 @@ This document provides a comprehensive security audit of all service accounts, r
 
 ---
 
-## 3. Detailed Justification for CI/CD Scoped Admin Roles
+## 3. Detailed Justification for CI/CD Scoped Admin Roles & Least-Privilege Distinction
+
+### Crucial Architectural Distinction:
+```text
+Application service accounts
+→ resource-scoped least privilege (objectCreator, objectViewer, publisher, dataEditor with conditions)
+
+Terraform deployment service account
+→ service-scoped administrative delegation (storage.admin, bigquery.admin, pubsub.admin, serviceAccountAdmin)
+```
 
 In Google Cloud Platform, managing fine-grained infrastructure definitions requires specific administrative roles:
 1. **`roles/storage.admin`**: Managing bucket lifecycle rules, Uniform Bucket-Level Access (UBLA), and Public Access Prevention requires bucket metadata write access, which standard `storage.objectAdmin` does not grant.
@@ -40,5 +49,12 @@ In Google Cloud Platform, managing fine-grained infrastructure definitions requi
 3. **`roles/pubsub.admin`**: Creating topics, dead-letter queues, and direct BigQuery subscriptions requires topic and subscription administrative scope.
 4. **`roles/iam.serviceAccountAdmin`**: Creating and updating least-privilege service accounts requires service account lifecycle management.
 
+**Precise Security Model of `sa-ci-apply`:**
+> `sa-ci-apply` uses service-scoped administrative roles at project scope because Terraform must provision and manage the assessment infrastructure.
+>
+> This is intentionally narrower than `roles/owner` or `roles/editor`, but it is **not** equivalent to resource-level least privilege.
+>
+> The service account must therefore be dedicated exclusively to Terraform deployment and must not be reused by application workloads.
+
 **Why Not Project Owner/Editor?**  
-`roles/owner` and `roles/editor` grant unrestricted access across Compute Engine, Kubernetes Engine, Cloud SQL, Secret Manager, Cloud KMS, and Cloud Billing. By confining `sa-ci-apply` strictly to Storage, BigQuery, Pub/Sub, and IAM Service Accounts, the blast radius of a compromised deployment credential is fundamentally bounded.
+`roles/owner` and `roles/editor` grant unrestricted access across Compute Engine, Kubernetes Engine, Cloud SQL, Secret Manager, Cloud KMS, and Cloud Billing. By confining `sa-ci-apply` strictly to Storage, BigQuery, Pub/Sub, and IAM Service Accounts, the blast radius of a compromised deployment credential is fundamentally bounded compared to primitive owner/editor roles, while allowing full declarative management of the assessment stack.

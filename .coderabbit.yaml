@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+early_access: false
+enable_free_tier: true
+
+tone_instructions: "Assertive production-engineering tone. Prioritize security, data integrity, least privilege, anti-coercion, and fail-closed correctness over cosmetic feedback. Avoid poetic or speculative commentary."
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  in_progress_fortune: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    base_branches:
+      - "main"
+  path_instructions:
+    - path: "app/**/*.py"
+      instructions: |
+        Review as production Django/DRF backend code.
+        Verify:
+        - Strict serializer validation and anti-coercion behavior (e.g., rejecting boolean-string or numeric coercion).
+        - Rejection of unknown or extraneous fields ('additionalProperties: false' parity).
+        - Strict type validation, deterministic error codes, and malformed input handling.
+        - Authentication, authorization, RBAC, and least-privilege service interactions.
+        - Database integrity, transaction boundaries, and exception handling.
+        - Sensitive data exposure in logs, responses, or error payloads.
+        - Test coverage completeness and regression risks.
+        Prioritize security vulnerabilities and data-integrity defects above all else.
+
+    - path: "tests/**/*.py"
+      instructions: |
+        Review test suites for production-grade reliability and rigor.
+        Verify:
+        - Boundary condition coverage, invalid inputs, and malformed payloads.
+        - Strict anti-coercion tests (e.g. asserting rejection of "true", 1, or string numbers for booleans).
+        - Security-sensitive cases, negative test fixtures, and fail-closed behaviors.
+        - Comprehensive regression coverage.
+        NEVER recommend weakening or deleting tests simply to make CI pass.
+
+    - path: "terraform/**/*.tf"
+      instructions: |
+        Review as production Google Cloud Platform (GCP) Terraform Infrastructure as Code.
+        Verify:
+        - Least-privilege IAM role bindings and service-account separation (no roles/owner or roles/editor).
+        - Proper IAM Conditions restricting resource scopes where applicable.
+        - Public access prevention and uniform bucket-level access (UBLA) on Cloud Storage.
+        - Encryption, versioning, object retention, and lifecycle transition rules.
+        - Resource lifecycle safety, dependency ordering, and avoidance of accidental destruction.
+        - BigQuery dataset/table security, partitioning, clustering, and table-level Row-Level Security (RLS).
+        - Pub/Sub permissions, topic retention, DLQ routing, and Pub/Sub -> BigQuery streaming integrity.
+        - Insecure default values and potential privilege-escalation vectors.
+        Do NOT claim runtime enforcement when it cannot be proven from Terraform code.
+
+    - path: ".github/workflows/**/*.yml"
+      instructions: |
+        Review CI/CD pipelines as fail-closed production security controls.
+        Verify:
+        - Least-privilege workflow permissions ('permissions: contents: read', with 'id-token: write' only where WIF is required).
+        - Secure OIDC / Workload Identity Federation (WIF) configurations with zero long-lived service account keys.
+        - Secret exposure prevention and untrusted PR input sanitization.
+        - Strict action pinning to secure versions/SHAs.
+        - Elimination of bypass paths and complete prohibition of 'continue-on-error: true' on mandatory gates.
+        - Mandatory gate enforcement: formatting, linting, secret detection, IaC security scanning, and test execution.
+        NEVER recommend disabling or bypassing security gates simply to make a workflow pass.
+
+    - path: "schemas/**/*.json"
+      instructions: |
+        Review as authoritative canonical contracts (Draft 2020-12).
+        Verify:
+        - JSON Schema correctness, syntax, and draft specification compliance.
+        - Explicit declaration of required fields, exact data types, and enum restrictions.
+        - Strict prohibition of unexpected fields ('additionalProperties: false').
+        - Exact mathematical alignment and 1:1 parity with Django REST Framework serializers and BigQuery table schemas.
+        - Detection of schema drift, naming mismatches, or potential silent data loss.
+
+chat:
+  auto_reply: true
